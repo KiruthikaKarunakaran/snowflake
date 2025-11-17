@@ -1,0 +1,42 @@
+create or replace dynamic table HACKATHON_DATASETS.TEAM_ATHENA.EARNINGS_SENTIMENTS_VW_ATHENA(
+	SUMMARIZED_TEXT,
+	RISK_CATEGORY,
+	RETURN_CATEGORY,
+	PRIMARY_TICKER,
+	SENTIMENT_REASON,
+	UNIQUE_ANALYST_COUNT,
+	SENTIMENT_SCORE,
+	EVENT_TIMESTAMP,
+	EVENT_TYPE,
+	CREATED_AT,
+	FULL_TRANSCRIPT_TEXT,
+	TRANSCRIPT_LENGTH
+) target_lag = '20 minutes' refresh_mode = INCREMENTAL initialize = ON_CREATE warehouse = LARGE_WH
+ as
+select SNOWFLAKE.CORTEX.SUMMARIZE(full_transcript_text) as summarized_text,AI_CLASSIFY(full_transcript_text,['LOW','MEDIUM','HIGH']) as risk_category,AI_CLASSIFY(full_transcript_text,['LOW','MEDIUM','HIGH']) as return_category,* from HACKATHON_DATASETS.EARNINGS_ANALYSIS.SENTIMENT_WITH_TRANSCRIPTS_FOR_SEARCH;
+
+
+create or replace dynamic table HACKATHON_DATASETS.TEAM_ATHENA.INFOGRAPHIC_DT_ATHENA(
+	COMPANY_CATEGORY,
+	COMPANY_TICKER,
+	RELATIVE_PATH,
+	TEXT,
+	COMPANY_NAME,
+	TICKER,
+	REPORT_PERIOD,
+	TOTAL_REVENUE,
+	YOY_GROWTH,
+	PRODUCT_REVENUE,
+	SERVICES_REVENUE,
+	TOTAL_CUSTOMERS,
+	CUSTOMERS_1M_PLUS,
+	NET_REVENUE_RETENTION,
+	GROSS_MARGIN,
+	OPERATING_MARGIN,
+	FREE_CASH_FLOW,
+	RPO,
+	RPO_GROWTH,
+	BRANDING
+) target_lag = '20 minutes' refresh_mode = INCREMENTAL initialize = ON_CREATE warehouse = LARGE_WH
+ as
+select  AI_COMPLETE('claude-3-7-sonnet',concat('what kind of company is this. give in two or three words:',TEXT)) as company_category,* from HACKATHON_DATASETS.FINANCIAL_DATA.VW_infographic_metrics;
