@@ -1,0 +1,49 @@
+
+CREATE OR REPLACE TEMPORARY TABLE ANNUAL_REPORTS_RAW_TEXT AS
+SELECT 
+    RELATIVE_PATH,
+    TO_VARCHAR (
+        SNOWFLAKE.CORTEX.PARSE_DOCUMENT (
+            '@ANNUAL_REPORTS',
+            RELATIVE_PATH,
+            {'mode': 'LAYOUT'} ):content
+        ) AS EXTRACTED_LAYOUT 
+FROM 
+    DIRECTORY('@ANNUAL_REPORTS')
+WHERE
+    RELATIVE_PATH LIKE '%.pdf';
+
+
+create or replace TEMPORARY TABLE ANNUAL_REPORTS_CHUNKS_TABLE ( 
+    RELATIVE_PATH VARCHAR(16777216), -- Relative path to the PDF file
+    CHUNK VARCHAR(16777216), -- Piece of text
+    CHUNK_INDEX INTEGER, -- Index for the text
+    CATEGORY VARCHAR(16777216) -- Will hold the document category to enable filtering
+);
+
+insert into ANNUAL_REPORTS_CHUNKS_TABLE (relative_path, chunk, chunk_index)
+
+    select relative_path, 
+            c.value::TEXT as chunk,
+            c.INDEX::INTEGER as chunk_index
+            
+    from 
+        ANNUAL_REPORTS_RAW_TEXT,
+        LATERAL FLATTEN( input => SNOWFLAKE.CORTEX.SPLIT_TEXT_RECURSIVE_CHARACTER (
+              EXTRACTED_LAYOUT,
+              'markdown',
+              1512,
+              256,
+              ['\n\n', '\n', ' ', '']
+           )) c;
+
+select * from ANNUAL_REPORTS_CHUNKS_TABLE
+
+
+
+CREATE OR REPLACE  TABLE HACKATHON_DATASETS.TEAM_ATHENA.ANNUAL_REPORTS AS 
+  SELECT
+    DISTINCT SUBSTR(RELATIVE_PATH,8,4) as ticker, AI_SUMMARIZE_AGG(chunk) as rep
+  FROM
+    ANNUAL_REPORTS_CHUNKS_TABLE
+  GROUP BY SUBSTR(RELATIVE_PATH,8,4)
