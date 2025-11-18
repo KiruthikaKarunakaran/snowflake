@@ -1,0 +1,26 @@
+-- Select your catalog and 'bi_workshop' schema at the top
+
+SELECT
+  text_clean,
+  ai_analyze_sentiment(text_clean)                                                                  AS sentiment,
+  ai_classify(text_clean, array('investments', 'litigation', 'AI', 'other'))                        AS news_category,
+  ai_classify(text_clean, array('bearish', 'bullish', 'neutral', 'hold'))                           AS investment_category,
+  ai_extract(text_clean, array('location', 'organization'))                                         AS entities,
+
+  ai_gen(
+        'You are a confident financial advisor. Provide very concise investment advice based on this news article: ' || text_clean
+        )                                                                                           AS investment_advice,
+
+  ai_mask(text_clean, array('person', 'corporation', 'entity', 'company', 'ticker'))                AS text_masked,
+  ai_summarize(text_clean, 20)                                                                      AS text_sum_20words,
+
+  ai_query('databricks-gpt-oss-20b',
+           CONCAT('Summarize this article:\n', text_clean))                                         AS gpt_text_sum,
+
+  ai_query('databricks-meta-llama-3-3-70b-instruct',
+           CONCAT('Concisely list the corporate entities in this text:\n', text_clean))             AS corporate_entities
+
+FROM alpha_vantage_news
+WHERE ticker = "TSLA"
+LIMIT 10
+;
